@@ -1,0 +1,25 @@
+---
+# defaults file for mysql8
+
+files_to_copy: [
+   { name: ".my.cnf", dest: "/root/", permission: "0600" },
+   { name: "my.cnf", dest: "/etc/", permission: "0644"}, 
+   { name: "ntp.conf", dest: "/etc/", permission: "0644"}, 
+]
+
+services_firewall: [
+   { name: "mysql" },
+   { name: "ntp" }
+]
+
+services: [
+   { name: "mysqld" },
+   { name: "ntpd" }
+]  
+
+packages_to_install: [
+   { name: "mysql-community-server-*" },
+   { name: "MySQL-python" },
+   { name: "vim" },
+   { name: "ntp" }
+]

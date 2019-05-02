@@ -1,0 +1,65 @@
+---
+- hosts: mysql8
+  user: root
+  vars_files:
+   - default_vars.yml 
+  tasks:
+  - name: Actualizacion del equipo
+    yum: 
+     name: "*"
+     state: latest   
+
+  - name: Delete mariadb
+    yum: 
+     name: mariadb-libs
+     state: removed 
+
+  - name: Instalar repo mysql 8
+    yum: 
+     name: https://dev.mysql.com/get/mysql80-community-release-el7-1.noarch.rpm 
+     state: present
+
+  - name: Install mysql server
+    yum:
+     name: "{{ item.name }}"
+     state: present
+    with_items: "{{ packages_to_install }}"
+ 
+  - name: Copy my.cnf
+    copy:
+     src: "{{ item.name }}"
+     dest: "{{ item.dest }}"
+     mode: "{{ item.permission }}"
+    with_items: "{{ files_to_copy }}"
+    tags: [common]
+
+  - name: Enable services 
+    systemd: 
+      name: "{{ item.name }}"
+      state: restarted
+      enabled: yes
+    with_items: "{{ services }}"
+  
+  - name: Open services in firewall
+    firewalld:
+      service: "{{ item.name }}"
+      permanent: yes
+      state: enabled
+    with_items: "{{ services_firewall }}"
+   
+  - name: reload firewalld
+    systemd:
+      name: firewalld
+      state: reloaded
+      daemon_reload: yes
+
+  - name: Get root password
+    shell: "grep 'A temporary password is generated for root@localhost' /var/log/mysqld.log | awk -F ' ' '{print $(NF)}'"
+    register: root_password
+   
+  - name: Update expired root user password
+    command: mysql --user root --password={{ root_password.stdout }} --connect-expired-password --execute="ALTER USER 'root'@'localhost' IDENTIFIED BY '%P4ssW0rd__%';"
+    ignore_errors: true
+
+  - name: Execute scritp to load datetime
+    raw:  mysql_tzinfo_to_sql /usr/share/zoneinfo | mysql -u root mysql
